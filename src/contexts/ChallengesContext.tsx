@@ -1,4 +1,4 @@
-import {createContext, ReactNode, useState} from 'react';
+import {createContext, ReactNode, useEffect, useState} from 'react';
 import challenges from '../../challenges.json';
 
 interface Challenge {
@@ -16,6 +16,7 @@ interface ChallengerContextData {
   activeChallenge: Challenge;
   resetChallenge: () => void;
   experienceToNextLevel: number;
+  completeChallenge: () => void;
 }
 
 
@@ -34,6 +35,10 @@ export function ChallengesProvider({children}: ChallengeProviderProps){
 
   const experienceToNextLevel = Math.pow(((level + 1) * 4), 2);
 
+  useEffect(() => {
+    Notification.requestPermission();
+  }, []);
+
   function levelUp(){
     setLevel(level + 1);
   }
@@ -43,10 +48,37 @@ export function ChallengesProvider({children}: ChallengeProviderProps){
     const challenge = challenges[randomChallengeIndex];
 
     setActiveChallenge(challenge)
+
+    new Audio('/notification.mp3').play();
+
+    if(Notification.permission === 'granted') {
+      new Notification('Novo desafio ✨', {
+        body: `Valendo ${challenge.amount} de xp`
+      })
+    }
   }
 
   function resetChallenge() {
     setActiveChallenge(null);
+  }
+
+  function completeChallenge() {
+    if(!activeChallenge) {
+      return;
+    }
+
+    const {amount} = activeChallenge;
+
+    let finalExperience = currentExperience + amount;
+  
+    if (finalExperience >= experienceToNextLevel){
+      finalExperience = finalExperience - experienceToNextLevel;
+      levelUp();
+    }
+
+    setCurrentExperience(finalExperience);
+    setActiveChallenge(null);
+    setChallengesCompleted(challengesCompleted + 1);
   }
 
   return (
@@ -59,7 +91,8 @@ export function ChallengesProvider({children}: ChallengeProviderProps){
           startNewChallenge,
           activeChallenge,
           resetChallenge,
-          experienceToNextLevel 
+          experienceToNextLevel,
+          completeChallenge
       }}
     >
       {children}
